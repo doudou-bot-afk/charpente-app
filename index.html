@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Charpente — Conjugaison</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #FFFFFF;
+  --surface: #F7F5F0;
+  --text: #2C2C2A;
+  --muted: #7a7872;
+  --faint: #a6a49d;
+  --placeholder: #c2bfb7;
+  --line: rgba(0,0,0,0.12);
+  --line-soft: rgba(0,0,0,0.08);
+  --track: #eeece6;
+  --accent: #D85A30;
+  --green: #1D9E75;
+  --ok-bg: #E1F5EE;  --ok-line: #5DCAA5; --ok-text: #0F6E56;
+  --bad-bg: #FAECE7; --bad-text: #993C1D;
+  --sel-bg: #EFEFEC; --sel-line: #b8b5ae;
+  --hover: #FAFAF8;
+  --outside: #dedad3;
+  color-scheme: light;
+}
+html[data-theme="dark"] {
+  --bg: #1c1b19;
+  --surface: #262520;
+  --text: #ece9e2;
+  --muted: #a6a49d;
+  --faint: #7f7d77;
+  --placeholder: #66645e;
+  --line: rgba(255,255,255,0.14);
+  --line-soft: rgba(255,255,255,0.08);
+  --track: #34322d;
+  --ok-bg: rgba(29,158,117,0.18);  --ok-line: #1D9E75; --ok-text: #5DCAA5;
+  --bad-bg: rgba(216,90,48,0.18);  --bad-text: #F0997B;
+  --sel-bg: #2f2e29; --sel-line: #66645e;
+  --hover: #23221e;
+  --outside: #121110;
+  color-scheme: dark;
+}
+
+html, body { background: var(--bg); }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+  color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Outside Telegram (plain browser): centre a phone-width column */
+html.browser, html.browser body { background: var(--outside); }
+
+.app {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: var(--tg-viewport-height, 100dvh);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  padding-top: calc(var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px));
+  padding-bottom: calc(var(--tg-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) + var(--tg-content-safe-area-inset-bottom, 0px));
+}
+html.browser .app { box-shadow: 0 0 40px rgba(0,0,0,.08); }
+
+/* ── Nav bar ── */
+.nav-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px 14px;
+  flex-shrink: 0;
+}
+.back-btn {
+  background: none; border: none; cursor: pointer;
+  padding: 4px; color: var(--muted); flex-shrink: 0;
+  display: flex; align-items: center;
+  transition: opacity .15s;
+}
+.back-btn:active { opacity: .5; }
+html.tg .back-btn { display: none; }   /* Telegram shows its own back button */
+.progress-track {
+  flex: 1; height: 5px;
+  background: var(--track); border-radius: 3px; overflow: hidden;
+}
+.progress-fill {
+  height: 100%; background: var(--accent); border-radius: 3px;
+  transition: width .5s cubic-bezier(.4,0,.2,1);
+  width: 0%;
+}
+.progress-fill.green { background: var(--green); }
+.progress-count { font-size: 11px; color: var(--faint); flex-shrink: 0; min-width: 44px; text-align: right; }
+
+/* ── Content ── */
+.content {
+  flex: 1;
+  padding: 6px 20px 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.kicker {
+  font-size: 10px; letter-spacing: 1.5px;
+  text-transform: uppercase; margin-bottom: 10px; line-height: 1.4;
+}
+.kicker-verb   { color: var(--green); }
+.kicker-dot    { color: var(--faint); }
+.kicker-tense  { color: var(--accent); }
+
+.question-sentence {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 20px; font-weight: 400; color: var(--text);
+  line-height: 1.6; margin-bottom: 16px;
+}
+
+.blank-span {
+  display: inline-block;
+  min-width: 64px;
+  border-bottom: 2px solid var(--accent);
+  vertical-align: baseline;
+  margin: 0 3px;
+  text-align: center;
+  transition: border-color .2s, color .2s;
+}
+.blank-span.correct { color: var(--green); font-style: italic; border-bottom-color: var(--green); }
+.blank-span.wrong   { color: var(--accent); font-style: italic; border-bottom-color: var(--accent); text-decoration: line-through; }
+
+.input-wrap {
+  background: var(--surface); border: 0.5px solid var(--line-soft);
+  border-radius: 12px; padding: 13px 15px;
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 10px; transition: border-color .2s;
+}
+.input-wrap:focus-within { border-color: rgba(216,90,48,.45); }
+.input-wrap input {
+  flex: 1; min-width: 0; background: none; border: none; outline: none;
+  font-size: 16px; color: var(--text); font-family: inherit;
+}
+.input-wrap input::placeholder { color: var(--placeholder); }
+.input-wrap input:disabled { opacity: 1; -webkit-text-fill-color: var(--text); }
+.kbd-icon { color: var(--placeholder); flex-shrink: 0; }
+
+/* ── Choices ── */
+.choices { display: flex; flex-direction: column; gap: 9px; margin-bottom: 12px; }
+.choice-btn {
+  background: var(--bg); border: 1px solid var(--line);
+  border-radius: 13px; padding: 13px 16px;
+  font-size: 15px; color: var(--text); cursor: pointer;
+  text-align: left; font-family: inherit;
+  transition: all .15s; width: 100%;
+}
+@media (hover: hover) {
+  .choice-btn:hover:not(:disabled) { border-color: var(--sel-line); background: var(--hover); }
+}
+.choice-btn.selected  { background: var(--sel-bg); border: 1.5px solid var(--sel-line); }
+.choice-btn.rev-ok    { background: var(--ok-bg);  border: 1.5px solid var(--ok-line); color: var(--ok-text); }
+.choice-btn.rev-bad   { background: var(--bad-bg); border: 1.5px solid var(--accent); color: var(--bad-text); opacity: .8; }
+
+.correct-after { color: var(--green); font-style: italic; }
+
+/* ── CTA ── */
+.cta-btn {
+  background: var(--accent); color: #fff;
+  border: none; border-radius: 14px;
+  padding: 15px; font-size: 16px; font-weight: 500;
+  cursor: pointer; width: 100%; font-family: inherit;
+  transition: opacity .15s, background .3s;
+  margin-top: auto; flex-shrink: 0;
+}
+.cta-btn:active { opacity: .85; }
+.cta-btn:disabled { opacity: .35; cursor: default; }
+.cta-btn.green { background: var(--green); }
+.cta-btn.ghost {
+  background: none; color: var(--muted); border: 1px solid var(--line); margin-top: 10px;
+}
+
+.spacer { flex: 1; min-height: 12px; }
+
+/* ── Home ── */
+.home-head { padding: 18px 0 18px; }
+.home-head h1 {
+  font-family: Georgia, serif; font-size: 26px; font-weight: 400;
+  margin-bottom: 6px; line-height: 1.25;
+}
+.home-head p { font-size: 14px; color: var(--muted); line-height: 1.5; }
+.lessons { display: flex; flex-direction: column; gap: 10px; }
+.lesson {
+  display: flex; align-items: center; gap: 14px;
+  background: var(--bg); border: 1px solid var(--line);
+  border-radius: 16px; padding: 14px 16px;
+  cursor: pointer; text-align: left; font-family: inherit; color: var(--text);
+  width: 100%; transition: background .15s, border-color .15s;
+}
+.lesson:active { background: var(--hover); }
+@media (hover: hover) { .lesson:hover { border-color: var(--sel-line); } }
+.lesson-body { flex: 1; min-width: 0; }
+.lesson-title { font-family: Georgia, serif; font-size: 17px; margin-bottom: 3px; }
+.lesson-meta { font-size: 12px; color: var(--faint); }
+.lesson-meta .resume { color: var(--accent); }
+.lesson-meta .best   { color: var(--green); }
+.lesson-bar { height: 3px; background: var(--track); border-radius: 2px; overflow: hidden; margin-top: 8px; }
+.lesson-bar div { height: 100%; background: var(--accent); border-radius: 2px; }
+.lesson-bar div.done { background: var(--green); }
+.lesson-chev { color: var(--placeholder); flex-shrink: 0; }
+.lesson.all { background: var(--surface); border-color: var(--line-soft); }
+
+/* ── Completion ── */
+.completion {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center; flex: 1; padding: 32px 0 0;
+}
+.completion-ring {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: var(--ok-bg);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 20px;
+}
+.completion h2 {
+  font-family: Georgia, serif; font-size: 22px;
+  font-weight: 400; color: var(--text); margin-bottom: 8px;
+}
+.completion .sub { font-size: 14px; color: var(--muted); line-height: 1.6; margin-bottom: 28px; }
+.completion .btns { width: 100%; margin-top: auto; }
+.hi { color: var(--accent); font-weight: 600; }
+
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="nav-bar" id="navBar" hidden>
+    <button class="back-btn" onclick="goHome()" aria-label="Retour">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="1.8"
+           stroke-linecap="round" stroke-linejoin="round">
+        <line x1="19" y1="12" x2="5" y2="12"/>
+        <polyline points="12 19 5 12 12 5"/>
+      </svg>
+    </button>
+    <div class="progress-track">
+      <div class="progress-fill" id="progFill"></div>
+    </div>
+    <span class="progress-count" id="progCount"></span>
+  </div>
+  <div class="content" id="main"></div>
+</div>
+
+<script>
+/* ──────────────────────────────────────
+   Telegram
+────────────────────────────────────── */
+const tg = window.Telegram && window.Telegram.WebApp;
+const IN_TG = !!(tg && tg.initData);
+const can = v => IN_TG && tg.isVersionAtLeast(v);
+
+document.documentElement.classList.add(IN_TG ? 'tg' : 'browser');
+
+function applyTheme() {
+  const dark = IN_TG
+    ? tg.colorScheme === 'dark'
+    : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  if (can('6.1')) {
+    const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+    tg.setHeaderColor(bg);
+    tg.setBackgroundColor(bg);
+  }
+  if (can('7.10')) tg.setBottomBarColor(getComputedStyle(document.documentElement).getPropertyValue('--bg').trim());
+}
+
+if (IN_TG) {
+  tg.ready();
+  tg.expand();
+  if (can('7.7')) tg.disableVerticalSwipes();   // so scrolling doesn't close the app
+  tg.onEvent('themeChanged', applyTheme);
+  if (can('6.1')) tg.BackButton.onClick(goHome);
+}
+applyTheme();
+
+const haptic = {
+  ok()   { if (can('6.1')) tg.HapticFeedback.notificationOccurred('success'); },
+  bad()  { if (can('6.1')) tg.HapticFeedback.notificationOccurred('error'); },
+  tap()  { if (can('6.1')) tg.HapticFeedback.selectionChanged(); },
+};
+
+/* Progress is kept in Telegram CloudStorage (synced across the user's
+   devices), falling back to localStorage in a normal browser. */
+const STORE_KEY = 'progress_v1';
+const store = {
+  load() {
+    return new Promise(res => {
+      if (can('6.9')) {
+        tg.CloudStorage.getItem(STORE_KEY, (err, v) => res(err ? null : v));
+      } else {
+        try { res(localStorage.getItem(STORE_KEY)); } catch { res(null); }
+      }
+    });
+  },
+  save(obj) {
+    const v = JSON.stringify(obj);
+    if (can('6.9')) tg.CloudStorage.setItem(STORE_KEY, v);
+    else { try { localStorage.setItem(STORE_KEY, v); } catch {} }
+  },
+};
+
+/* ──────────────────────────────────────
+   Helpers
+────────────────────────────────────── */
+const norm = s =>
+  s.toLowerCase()
+   .normalize('NFD').replace(/[̀-ͯ]/g, '')
+   .replace(/[’‘`]/g, "'")
+   .replace(/\s+/g, ' ')
+   .trim();
+
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+const $ = id => document.getElementById(id);
+
+/* ──────────────────────────────────────
+   Exercise data
+   q   : sentence with ___ for blank
+   a   : correct answer
+   type: 'fill' (default) | 'choice'
+   c   : choices array (choice exercises)
+   k   : kicker label "VERBE · TEMPS"
+────────────────────────────────────── */
+const EX = [
+  /* ═══ ÊTRE ═══ */
+  {k:"ÊTRE · PRÉSENT DE L'INDICATIF",   q:'Je ___ étudiant.',             a:'suis'},
+  {k:"ÊTRE · PRÉSENT DE L'INDICATIF",   q:'Ils ___ au cinéma.',           a:'sont'},
+  {k:"ÊTRE · PRÉSENT DE L'INDICATIF",   q:'Tu ___ sportif.',              a:'es'},
+  {k:"ÊTRE · PRÉSENT DE L'INDICATIF",   q:'On ___ à la maison.',          a:'est'},
+  {k:"ÊTRE · PRÉSENT DE L'INDICATIF",   q:'Vous ___ libres, ce soir ?',   a:'êtes'},
+  {k:"ÊTRE · PRÉSENT DE L'INDICATIF",   q:'Il ___ midi et quart.',        a:'est'},
+  {k:"ÊTRE · PRÉSENT DE L'INDICATIF",   q:'Nous ___ très contents.',      a:'sommes'},
+  {k:"ÊTRE · PRÉSENT DE L'INDICATIF",   q:'Elles ___ en retard.',         a:'sont'},
+
+  /* C'EST / CE SONT */
+  {k:"ÊTRE · PRÉSENT DE L'INDICATIF", type:'choice',
+    q:'___ de très bons amis.',            a:"Ce sont", c:["C'est","Ce sont"]},
+  {k:"ÊTRE · PRÉSENT DE L'INDICATIF", type:'choice',
+    q:'___ un film magnifique.',           a:"C'est",   c:["C'est","Ce sont"]},
+  {k:"ÊTRE · PRÉSENT DE L'INDICATIF", type:'choice',
+    q:'___ nos correspondants espagnols.', a:'Ce sont', c:["C'est","Ce sont"]},
+  {k:"ÊTRE · PRÉSENT DE L'INDICATIF", type:'choice',
+    q:'___ mon professeur de français.',   a:"C'est",   c:["C'est","Ce sont"]},
+  {k:"ÊTRE · PRÉSENT DE L'INDICATIF", type:'choice',
+    q:'___ des fraises.',                  a:'Ce sont', c:["C'est","Ce sont"]},
+
+  /* ═══ AVOIR ═══ */
+  {k:"AVOIR · PRÉSENT DE L'INDICATIF",  q:'Nous ___ des problèmes.',           a:'avons'},
+  {k:"AVOIR · PRÉSENT DE L'INDICATIF",  q:'Vous ___ un jardin ?',              a:'avez'},
+  {k:"AVOIR · PRÉSENT DE L'INDICATIF",  q:'Ils ___ beaucoup de valises.',      a:'ont'},
+  {k:"AVOIR · PRÉSENT DE L'INDICATIF",  q:'Tu ___ des disques de jazz ?',      a:'as'},
+  {k:"AVOIR · PRÉSENT DE L'INDICATIF",  q:'Il ___ un piano chez lui.',         a:'a'},
+  {k:"AVOIR · PRÉSENT DE L'INDICATIF",  q:"Elle n'___ pas de dictionnaire.",   a:'a'},
+  {k:"AVOIR · PRÉSENT DE L'INDICATIF",  q:"Je n'___ pas de patience.",         a:'ai'},
+
+  /* ═══ ALLER ═══ */
+  {k:"ALLER · PRÉSENT DE L'INDICATIF",  q:'Ils ___ au cinéma.',                a:'vont'},
+  {k:"ALLER · PRÉSENT DE L'INDICATIF",  q:'Est-ce que tu ___ bien ?',          a:'vas'},
+  {k:"ALLER · PRÉSENT DE L'INDICATIF",  q:"Je ne ___ pas à l'Opéra.",         a:'vais'},
+  {k:"ALLER · PRÉSENT DE L'INDICATIF",  q:'Jean et moi ___ à la piscine.',     a:'allons'},
+  {k:"ALLER · PRÉSENT DE L'INDICATIF",  q:'Il ___ à Londres en avion.',        a:'va'},
+  {k:"ALLER · PRÉSENT DE L'INDICATIF",  q:'Vous ___ au bureau à pied ?',       a:'allez'},
+
+  /* ═══ VENIR ═══ */
+  {k:"VENIR · PRÉSENT DE L'INDICATIF",  q:'Elle ___ de Stockholm.',            a:'vient'},
+  {k:"VENIR · PRÉSENT DE L'INDICATIF",  q:'Nous ___ de Madrid.',               a:'venons'},
+  {k:"VENIR · PRÉSENT DE L'INDICATIF",  q:'Ils ___ de Los Angeles.',           a:'viennent'},
+
+  /* ═══ FAIRE ═══ */
+  {k:"FAIRE · PRÉSENT DE L'INDICATIF",  q:'Je ___ la vaisselle.',              a:'fais'},
+  {k:"FAIRE · PRÉSENT DE L'INDICATIF",  q:'Les garçons ___ du bruit.',         a:'font'},
+  {k:"FAIRE · PRÉSENT DE L'INDICATIF",  q:'Marie ___ du piano.',               a:'fait'},
+  {k:"FAIRE · PRÉSENT DE L'INDICATIF",  q:'Nous ___ tous quelque chose.',      a:'faisons'},
+  {k:"FAIRE · PRÉSENT DE L'INDICATIF",  q:'Mes frères ___ du tennis.',         a:'font'},
+
+  /* ═══ MODAUX ═══ */
+  {k:"VOULOIR · PRÉSENT DE L'INDICATIF", q:'Je ___ ouvrir la porte.',           a:'veux'},
+  {k:"POUVOIR · PRÉSENT DE L'INDICATIF", q:'Elle ___ parler trois langues.',    a:'peut'},
+  {k:"DEVOIR · PRÉSENT DE L'INDICATIF",  q:'Nous ___ aller à la banque.',      a:'devons'},
+  {k:"POUVOIR · PRÉSENT DE L'INDICATIF", q:"Est-ce que je ___ ouvrir la fenêtre ?", a:'peux'},
+  {k:"DEVOIR · PRÉSENT DE L'INDICATIF",  q:'Elle ___ être malade.',             a:'doit'},
+  {k:"SAVOIR · PRÉSENT DE L'INDICATIF",  q:'Elle ___ lire et écrire.',          a:'sait'},
+  {k:"VOULOIR · PRÉSENT DE L'INDICATIF", q:'Ils ___ sortir.',                   a:'veulent'},
+
+  /* ═══ VERBES -ER ═══ */
+  {k:"RENTRER · PRÉSENT DE L'INDICATIF",  q:'Tu ___ tard.',             a:'rentres'},
+  {k:"HABITER · PRÉSENT DE L'INDICATIF",  q:'Ils ___ à Tokyo.',         a:'habitent'},
+  {k:"DÎNER · PRÉSENT DE L'INDICATIF",    q:'Vous ne ___ pas avec nous ?', a:'dînez'},
+  {k:"PASSER · PRÉSENT DE L'INDICATIF",   q:'On ___ nos vacances ici.', a:'passe'},
+  {k:"PLEURER · PRÉSENT DE L'INDICATIF",  q:'Elles ___ souvent.',       a:'pleurent'},
+  {k:"AIDER · PRÉSENT DE L'INDICATIF",    q:'Nous ___ les petits.',     a:'aidons'},
+  {k:"REGARDER · PRÉSENT DE L'INDICATIF", q:'Ils ___ la télévision.',   a:'regardent'},
+
+  /* ═══ VERBES -IR ═══ */
+  {k:"APPLAUDIR · PRÉSENT DE L'INDICATIF", q:'Le public ___ à la fin.',              a:'applaudit'},
+  {k:"RALENTIR · PRÉSENT DE L'INDICATIF",  q:'Les voitures ___ au feu rouge.',       a:'ralentissent'},
+  {k:"RÉUSSIR · PRÉSENT DE L'INDICATIF",   q:'Je ne ___ pas toujours.',              a:'réussis'},
+  {k:"FINIR · PRÉSENT DE L'INDICATIF",     q:'Nous ___ le travail.',                 a:'finissons'},
+  {k:"ROUGIR · PRÉSENT DE L'INDICATIF",    q:'Elle ___ facilement.',                 a:'rougit'},
+  {k:"AGIR · PRÉSENT DE L'INDICATIF",      q:'Ils ___ toujours trop tard.',          a:'agissent'},
+
+  /* ═══ PRENDRE ═══ */
+  {k:"PRENDRE · PRÉSENT DE L'INDICATIF",    q:"Je n'ai pas le temps, je ___ un sandwich.", a:'prends'},
+  {k:"PRENDRE · PRÉSENT DE L'INDICATIF",    q:'Leur voiture est en panne, ils ___ le train.', a:'prennent'},
+  {k:"PRENDRE · PRÉSENT DE L'INDICATIF",    q:'Nous ___ un bain de soleil.',               a:'prenons'},
+  {k:"COMPRENDRE · PRÉSENT DE L'INDICATIF", q:"Elles ___ l'arabe.",                        a:'comprennent'},
+
+  /* ═══════════════════════════════════════════════════
+     L'IMPARFAIT DE L'INDICATIF
+  ════════════════════════════════════════════════════ */
+
+  /* ─── ÊTRE imparfait (p. 47) ─── */
+  {k:"ÊTRE · IMPARFAIT DE L'INDICATIF",   q:'Le professeur ___ debout devant son bureau.',   a:'était'},
+  {k:"ÊTRE · IMPARFAIT DE L'INDICATIF",   q:'Nous ___ une dizaine dans la classe.',           a:'étions'},
+  {k:"ÊTRE · IMPARFAIT DE L'INDICATIF",   q:"Les autres ___ encore dans l'escalier.",         a:'étaient'},
+  {k:"ÊTRE · IMPARFAIT DE L'INDICATIF",   q:'On ___ tremblants de peur.',                     a:'était'},
+  {k:"ÊTRE · IMPARFAIT DE L'INDICATIF",   q:"C'___ la panique !",                             a:'était'},
+  {k:"ÊTRE · IMPARFAIT DE L'INDICATIF",   q:'Je ___ terrorisé.',                              a:'étais'},
+
+  /* ─── AVOIR imparfait (p. 47) ─── */
+  {k:"AVOIR · IMPARFAIT DE L'INDICATIF",  q:'Mon frère ___ dix-huit ans.',                    a:'avait'},
+  {k:"AVOIR · IMPARFAIT DE L'INDICATIF",  q:"J'___ à peine seize ans.",                       a:'avais'},
+  {k:"AVOIR · IMPARFAIT DE L'INDICATIF",  q:'Ses cousines ___ à peu près le même âge.',       a:'avaient'},
+  {k:"AVOIR · IMPARFAIT DE L'INDICATIF",  q:'Philippe ___ son permis de conduire.',           a:'avait'},
+  {k:"AVOIR · IMPARFAIT DE L'INDICATIF",  q:'Nous ___ le droit de prendre la voiture.',      a:'avions'},
+
+  /* ─── ALLER imparfait ─── */
+  {k:"ALLER · IMPARFAIT DE L'INDICATIF",  q:'Il ___ au cinéma tous les vendredis.',           a:'allait'},
+  {k:"ALLER · IMPARFAIT DE L'INDICATIF",  q:'Nous ___ à la piscine ensemble.',                a:'allions'},
+  {k:"ALLER · IMPARFAIT DE L'INDICATIF",  q:'Ils ___ au bureau en métro.',                    a:'allaient'},
+
+  /* ─── VENIR imparfait ─── */
+  {k:"VENIR · IMPARFAIT DE L'INDICATIF",  q:'Elle ___ nous voir tous les étés.',              a:'venait'},
+  {k:"VENIR · IMPARFAIT DE L'INDICATIF",  q:'Nous ___ de Madrid à cette époque.',             a:'venions'},
+  {k:"VENIR · IMPARFAIT DE L'INDICATIF",  q:'Ils ___ souvent dîner chez nous.',               a:'venaient'},
+
+  /* ─── FAIRE imparfait ─── */
+  {k:"FAIRE · IMPARFAIT DE L'INDICATIF",  q:'Je ___ la vaisselle chaque soir.',               a:'faisais'},
+  {k:"FAIRE · IMPARFAIT DE L'INDICATIF",  q:'Nous ___ souvent des blagues.',                  a:'faisions'},
+  {k:"FAIRE · IMPARFAIT DE L'INDICATIF",  q:'Elle ___ du piano le matin.',                    a:'faisait'},
+  {k:"FAIRE · IMPARFAIT DE L'INDICATIF",  q:'Ils ___ du bruit toute la nuit.',                a:'faisaient'},
+
+  /* ─── VOULOIR imparfait ─── */
+  {k:"VOULOIR · IMPARFAIT DE L'INDICATIF", q:"Elle ___ partir à l'étranger.",                 a:'voulait'},
+  {k:"VOULOIR · IMPARFAIT DE L'INDICATIF", q:'Nous ___ visiter le musée.',                    a:'voulions'},
+  {k:"VOULOIR · IMPARFAIT DE L'INDICATIF", q:'Je ___ apprendre le piano.',                    a:'voulais'},
+  {k:"VOULOIR · IMPARFAIT DE L'INDICATIF", q:'Ils ___ sortir mais il pleuvait.',              a:'voulaient'},
+
+  /* ─── POUVOIR imparfait ─── */
+  {k:"POUVOIR · IMPARFAIT DE L'INDICATIF", q:'Il ne ___ pas dormir.',                         a:'pouvait'},
+  {k:"POUVOIR · IMPARFAIT DE L'INDICATIF", q:'Nous ___ partir à midi.',                       a:'pouvions'},
+  {k:"POUVOIR · IMPARFAIT DE L'INDICATIF", q:'Elles ___ parler trois langues.',               a:'pouvaient'},
+
+  /* ─── DEVOIR imparfait (p. 49) ─── */
+  {k:"DEVOIR · IMPARFAIT DE L'INDICATIF",  q:'Je ___ me lever à 6 h du matin.',               a:'devais'},
+  {k:"DEVOIR · IMPARFAIT DE L'INDICATIF",  q:'Vous ___ obéir aux ordres des professeurs.',    a:'deviez'},
+  {k:"DEVOIR · IMPARFAIT DE L'INDICATIF",  q:'On ___ travailler dur, même le dimanche.',      a:'devait'},
+  {k:"DEVOIR · IMPARFAIT DE L'INDICATIF",  q:'Nous ___ économiser notre argent de poche.',    a:'devions'},
+
+  /* ─── SAVOIR imparfait (p. 49) ─── */
+  {k:"SAVOIR · IMPARFAIT DE L'INDICATIF",  q:"Nous ne ___ pas qu'il y avait une piscine.",    a:'savions'},
+  {k:"SAVOIR · IMPARFAIT DE L'INDICATIF",  q:'Elle ne ___ pas parler français.',              a:'savait'},
+  {k:"SAVOIR · IMPARFAIT DE L'INDICATIF",  q:'Ils ne ___ pas distinguer les vins.',           a:'savaient'},
+  {k:"SAVOIR · IMPARFAIT DE L'INDICATIF",  q:"Tu ne ___ pas qu'elle était comédienne.",       a:'savais'},
+
+  /* ─── Verbes -ER imparfait (p. 51) ─── */
+  {k:"AIMER · IMPARFAIT DE L'INDICATIF",    q:'Elles ___ écouter de la musique.',             a:'aimaient'},
+  {k:"HABITER · IMPARFAIT DE L'INDICATIF",  q:'Il ___ à Lyon quand il était jeune.',          a:'habitait'},
+  {k:"CUISINER · IMPARFAIT DE L'INDICATIF", q:'Vous ___ très bien.',                          a:'cuisiniez'},
+  {k:"MANGER · IMPARFAIT DE L'INDICATIF",   q:'Je ___ de la viande deux fois par semaine.',   a:'mangeais'},
+  {k:"OUBLIER · IMPARFAIT DE L'INDICATIF",  q:'Tu ___ toujours tout.',                        a:'oubliais'},
+  {k:"AVANCER · IMPARFAIT DE L'INDICATIF",  q:'Nous ___ lentement dans la queue.',            a:'avancions'},
+  {k:"ESSAYER · IMPARFAIT DE L'INDICATIF",  q:'Tu ___ de comprendre.',                        a:'essayais'},
+  {k:"PASSER · IMPARFAIT DE L'INDICATIF",   q:'Ils ___ leur temps à jouer dehors.',           a:'passaient'},
+  {k:"ÉCOUTER · IMPARFAIT DE L'INDICATIF",  q:'On ___ de la musique sur un tourne-disque.',   a:'écoutait'},
+
+  /* ─── Verbes -IR imparfait (p. 53) ─── */
+  {k:"RÉUSSIR · IMPARFAIT DE L'INDICATIF",  q:'Je ___ tous mes examens.',                     a:'réussissais'},
+  {k:"OFFRIR · IMPARFAIT DE L'INDICATIF",   q:'Ils ___ une place gratuite.',                  a:'offraient'},
+  {k:"FINIR · IMPARFAIT DE L'INDICATIF",    q:'Nous ___ le travail avant midi.',              a:'finissions'},
+  {k:"PARTIR · IMPARFAIT DE L'INDICATIF",   q:'Il ___ en vacances tous les étés.',            a:'partait'},
+  {k:"SORTIR · IMPARFAIT DE L'INDICATIF",   q:'Ils ___ souvent le soir.',                     a:'sortaient'},
+
+  /* ─── Verbes -RE imparfait (p. 55) ─── */
+  {k:"PRENDRE · IMPARFAIT DE L'INDICATIF",  q:'Je ___ le métro tous les jours.',              a:'prenais'},
+  {k:"LIRE · IMPARFAIT DE L'INDICATIF",     q:'Nous ___ des magazines le soir.',              a:'lisions'},
+  {k:"APPRENDRE · IMPARFAIT DE L'INDICATIF",q:"J'___ facilement à cet âge-là.",              a:'apprenais'},
+  {k:"ENTENDRE · IMPARFAIT DE L'INDICATIF", q:'On ___ des bruits étranges la nuit.',          a:'entendait'},
+  {k:"RÉPONDRE · IMPARFAIT DE L'INDICATIF", q:'Il ___ toujours très vite.',                   a:'répondait'},
+  {k:"ÉCRIRE · IMPARFAIT DE L'INDICATIF",   q:"J'___ beaucoup à mes parents.",                a:'écrivais'},
+  {k:"DIRE · IMPARFAIT DE L'INDICATIF",     q:'Il ___ toujours la vérité.',                   a:'disait'},
+
+  /* ─── Verbes -OIR imparfait (p. 58–59) ─── */
+  {k:"VOIR · IMPARFAIT DE L'INDICATIF",     q:'Nous ___ nos amis le week-end.',               a:'voyions'},
+  {k:"CROIRE · IMPARFAIT DE L'INDICATIF",   q:"Je ___ que c'était difficile.",                a:'croyais'},
+  {k:"BOIRE · IMPARFAIT DE L'INDICATIF",    q:'Elle ___ du café au lait le matin.',           a:'buvait'},
+  {k:"RECEVOIR · IMPARFAIT DE L'INDICATIF", q:'Ils ___ souvent des amis à dîner.',            a:'recevaient'},
+  {k:"VOIR · IMPARFAIT DE L'INDICATIF",     q:'Tu ___ souvent Paul à la fac ?',               a:'voyais'},
+
+  /* ─── Passé composé avec avoir — être/avoir (p. 2) ─── */
+  {k:"ÊTRE · PASSÉ COMPOSÉ DE L'INDICATIF",    q:"J'___ très content de cette soirée.",          a:'ai été'},
+  {k:"AVOIR · PASSÉ COMPOSÉ DE L'INDICATIF",   q:"Tu ___ de la chance !",                        a:'as eu'},
+
+  /* ─── Passé composé avec avoir — verbes -ER (p. 3) ─── */
+  {k:"PARLER · PASSÉ COMPOSÉ DE L'INDICATIF",  q:"J'___ à mon professeur.",                      a:'ai parlé'},
+  {k:"ÉCOUTER · PASSÉ COMPOSÉ DE L'INDICATIF", q:"Est-ce que tu ___ les nouvelles ce matin ?",   a:'as écouté'},
+
+  /* ─── Passé composé avec avoir — verbes -IR (p. 4) ─── */
+  {k:"FINIR · PASSÉ COMPOSÉ DE L'INDICATIF",   q:"Vous ___ votre travail ?",                     a:'avez fini'},
+  {k:"COURIR · PASSÉ COMPOSÉ DE L'INDICATIF",  q:"Nous ___ derrière elle.",                      a:'avons couru'},
+  {k:"OUVRIR · PASSÉ COMPOSÉ DE L'INDICATIF",  q:"Elle ___ un magasin.",                         a:'a ouvert'},
+  {k:"OBTENIR · PASSÉ COMPOSÉ DE L'INDICATIF", q:"J'___ l'autorisation.",                        a:'ai obtenu'},
+  {k:"DORMIR · PASSÉ COMPOSÉ DE L'INDICATIF",  q:"Il ___ dix heures d'affilée.",                 a:'a dormi'},
+
+  /* ─── Passé composé avec avoir — verbes -IRE (p. 5) ─── */
+  {k:"LIRE · PASSÉ COMPOSÉ DE L'INDICATIF",    q:"Elles ___ cette pièce de théâtre.",            a:'ont lu'},
+  {k:"ÉCRIRE · PASSÉ COMPOSÉ DE L'INDICATIF",  q:"Tu ___ un livre ?",                            a:'as écrit'},
+  {k:"CONDUIRE · PASSÉ COMPOSÉ DE L'INDICATIF",q:"Il ___ trop vite.",                            a:'a conduit'},
+  {k:"DIRE · PASSÉ COMPOSÉ DE L'INDICATIF",    q:"On ___ du bien d'elle.",                       a:'a dit'},
+
+  /* ─── Passé composé avec avoir — verbes -DRE (p. 6) ─── */
+  {k:"ENTENDRE · PASSÉ COMPOSÉ DE L'INDICATIF",q:"On ___ dire qu'il émigrait au Canada.",        a:'a entendu'},
+  {k:"PRENDRE · PASSÉ COMPOSÉ DE L'INDICATIF", q:"Je ___ le train de sept heures.",              a:'ai pris'},
+  {k:"ATTENDRE · PASSÉ COMPOSÉ DE L'INDICATIF",q:"Nous ___ deux heures à la gare.",              a:'avons attendu'},
+  {k:"RÉPONDRE · PASSÉ COMPOSÉ DE L'INDICATIF",q:"Il ___ à ma lettre.",                          a:'a répondu'},
+
+  /* ─── Passé composé avec avoir — verbes -AIRE/-OIRE (p. 7) ─── */
+  {k:"PLAIRE · PASSÉ COMPOSÉ DE L'INDICATIF",  q:"Il ___ à son futur employeur.",                a:'a plu'},
+  {k:"FAIRE · PASSÉ COMPOSÉ DE L'INDICATIF",   q:"Tu ___ la fête ?",                             a:'as fait'},
+  {k:"BOIRE · PASSÉ COMPOSÉ DE L'INDICATIF",   q:"On ___ un jus de fruit.",                      a:'a bu'},
+  {k:"CROIRE · PASSÉ COMPOSÉ DE L'INDICATIF",  q:"Ils ___ à sa promesse.",                       a:'ont cru'},
+
+  /* ─── Passé composé avec avoir — verbes -TRE/-VRE (p. 8) ─── */
+  {k:"SUIVRE · PASSÉ COMPOSÉ DE L'INDICATIF",  q:"Ils ___ les instructions.",                    a:'ont suivi'},
+  {k:"CONNAÎTRE · PASSÉ COMPOSÉ DE L'INDICATIF",q:"Elle ___ son mari en Suisse.",                a:'a connu'},
+  {k:"METTRE · PASSÉ COMPOSÉ DE L'INDICATIF",  q:"J'___ le couvert.",                            a:'ai mis'},
+
+  /* ─── Passé composé avec avoir — verbes -OIR (p. 9) ─── */
+  {k:"POUVOIR · PASSÉ COMPOSÉ DE L'INDICATIF", q:"Nous ___ le voir.",                            a:'avons pu'},
+  {k:"SAVOIR · PASSÉ COMPOSÉ DE L'INDICATIF",  q:"Tu ___ lui parler.",                           a:'as su'},
+  {k:"RECEVOIR · PASSÉ COMPOSÉ DE L'INDICATIF",q:"J'___ une réponse.",                           a:'ai reçu'},
+  {k:"DEVOIR · PASSÉ COMPOSÉ DE L'INDICATIF",  q:"Ils ___ partir.",                              a:'ont dû'},
+  {k:"VOIR · PASSÉ COMPOSÉ DE L'INDICATIF",    q:"On ___ l'accident.",                           a:'a vu'},
+
+  /* ─── Passé composé avec être (p. 10–11) ─── */
+  {k:"VENIR · PASSÉ COMPOSÉ DE L'INDICATIF",   q:"Il ___ nous voir dimanche.",                   a:'est venu'},
+  {k:"DEVENIR · PASSÉ COMPOSÉ DE L'INDICATIF", q:"Il ___ célèbre.",                              a:'est devenu'},
+  {k:"MOURIR · PASSÉ COMPOSÉ DE L'INDICATIF",  q:"Il ___ d'un cancer.",                          a:'est mort'},
+  {k:"ALLER · PASSÉ COMPOSÉ DE L'INDICATIF",   q:"Il ___ à la poste.",                           a:'est allé'},
+  {k:"ARRIVER · PASSÉ COMPOSÉ DE L'INDICATIF", q:"Nous ___ il y a trois jours.",                 a:'sommes arrivés'},
+  {k:"PARTIR · PASSÉ COMPOSÉ DE L'INDICATIF",  q:"Je ___ en voyage.",                            a:'suis parti'},
+  {k:"NAÎTRE · PASSÉ COMPOSÉ DE L'INDICATIF",  q:"Il ___ en 1985.",                              a:'est né'},
+  {k:"SORTIR · PASSÉ COMPOSÉ DE L'INDICATIF",  q:"Ils ___ tard.",                                a:'sont sortis'},
+
+  /* ─── Plus-que-parfait — être/avoir/faire (p. 2–3) ─── */
+  {k:"ÊTRE · PLUS-QUE-PARFAIT DE L'INDICATIF",    q:"Il ___ jaloux.",                            a:'avait été'},
+  {k:"AVOIR · PLUS-QUE-PARFAIT DE L'INDICATIF",   q:"J'___ des ennuis.",                         a:'avais eu'},
+  {k:"FAIRE · PLUS-QUE-PARFAIT DE L'INDICATIF",   q:"Ils ___ des erreurs.",                      a:'avaient fait'},
+  {k:"ALLER · PLUS-QUE-PARFAIT DE L'INDICATIF",   q:"Tu ___ à Lyon.",                            a:'étais allé'},
+
+  /* ─── Plus-que-parfait — sens et emplois (p. 5–7) ─── */
+  {k:"PRENDRE · PLUS-QUE-PARFAIT DE L'INDICATIF", q:"Tu ___ de bonnes résolutions, mais tu ne les as pas tenues.", a:'avais pris'},
+  {k:"CROIRE · PLUS-QUE-PARFAIT DE L'INDICATIF",  q:"J'___ comprendre que tu acceptais, mais tu refuses !", a:'avais cru'},
+  {k:"PROMETTRE · PLUS-QUE-PARFAIT DE L'INDICATIF",q:"Elle ___ d'envoyer cette lettre, mais elle ne l'a pas fait.", a:'avait promis'},
+  {k:"DIRE · PLUS-QUE-PARFAIT DE L'INDICATIF",    q:"Ils ___ qu'ils rentraient le 21, mais ils ne sont pas là.", a:'avaient dit'},
+  {k:"PLAIRE · PLUS-QUE-PARFAIT DE L'INDICATIF",  q:"La maison lui ___ et elle a essayé de l'acheter.", a:'avait plu'},
+  {k:"POUVOIR · PLUS-QUE-PARFAIT DE L'INDICATIF", q:"Je croyais qu'on ___ le joindre.",          a:'avait pu'},
+  {k:"VOIR · PLUS-QUE-PARFAIT DE L'INDICATIF",    q:"Je croyais qu'il ___ ce film.",              a:'avait vu'},
+  {k:"RECEVOIR · PLUS-QUE-PARFAIT DE L'INDICATIF",q:"Je croyais qu'ils ___ le fax.",             a:'avaient reçu'},
+  {k:"VENIR · PLUS-QUE-PARFAIT DE L'INDICATIF",   q:"Si seulement il ___ !",                     a:'était venu'},
+  {k:"DÉCOUVRIR · PLUS-QUE-PARFAIT DE L'INDICATIF",q:"Si seulement nous ___ la vérité !",        a:'avions découvert'},
+
+  /* ─── Futur — être/avoir/aller/venir/faire (p. 2–3) ─── */
+  {k:"ÊTRE · FUTUR DE L'INDICATIF",    q:"Ils ___ là à 6 heures.",                               a:'seront'},
+  {k:"AVOIR · FUTUR DE L'INDICATIF",   q:"J'___ sa lettre demain.",                              a:'aurai'},
+  {k:"ALLER · FUTUR DE L'INDICATIF",   q:"Nous ___ en juin.",                                    a:'irons'},
+  {k:"VENIR · FUTUR DE L'INDICATIF",   q:"Tu ___ avec nous.",                                    a:'viendras'},
+  {k:"FAIRE · FUTUR DE L'INDICATIF",   q:"Il ___ chaud jeudi.",                                  a:'fera'},
+
+  /* ─── Futur — modaux (p. 4) ─── */
+  {k:"POUVOIR · FUTUR DE L'INDICATIF", q:"Nous ___ le faire.",                                   a:'pourrons'},
+  {k:"VOULOIR · FUTUR DE L'INDICATIF", q:"Il ___ rester plus tard.",                             a:'voudra'},
+  {k:"DEVOIR · FUTUR DE L'INDICATIF",  q:"Tu ___ passer à la banque.",                           a:'devras'},
+  {k:"SAVOIR · FUTUR DE L'INDICATIF",  q:"Vous ___ comment y aller ?",                           a:'saurez'},
+
+  /* ─── Futur — verbes -ER (p. 5–6) ─── */
+  {k:"AIMER · FUTUR DE L'INDICATIF",   q:"Il ___ cette idée.",                                   a:'aimera'},
+  {k:"PASSER · FUTUR DE L'INDICATIF",  q:"Je ___ la journée ici.",                               a:'passerai'},
+  {k:"ENVOYER · FUTUR DE L'INDICATIF", q:"Je l'___ mardi.",                                      a:'enverrai'},
+  {k:"APPELER · FUTUR DE L'INDICATIF", q:"Elle ___ ce soir.",                                    a:'appellera'},
+
+  /* ─── Futur — verbes -IR (p. 7) ─── */
+  {k:"PARTIR · FUTUR DE L'INDICATIF",  q:"Ils ___ mardi prochain.",                              a:'partiront'},
+  {k:"REVENIR · FUTUR DE L'INDICATIF", q:"Il ___ me chercher.",                                  a:'reviendra'},
+  {k:"DORMIR · FUTUR DE L'INDICATIF",  q:"Nous ___ sous la tente.",                              a:'dormirons'},
+  {k:"OUVRIR · FUTUR DE L'INDICATIF",  q:"Tu ___ un compte bancaire.",                           a:'ouvriras'},
+  {k:"COURIR · FUTUR DE L'INDICATIF",  q:"Elle ___ le marathon en avril.",                       a:'courra'},
+
+  /* ─── Futur — verbes -RE (p. 8) ─── */
+  {k:"CONDUIRE · FUTUR DE L'INDICATIF",q:"Tu ___ prudemment ?",                                  a:'conduiras'},
+  {k:"ÉCRIRE · FUTUR DE L'INDICATIF",  q:"Tu m'___ souvent ?",                                   a:'écriras'},
+  {k:"LIRE · FUTUR DE L'INDICATIF",    q:"Tu ___ mon livre ?",                                   a:'liras'},
+  {k:"DIRE · FUTUR DE L'INDICATIF",    q:"Tu ___ à Guy de m'appeler ?",                          a:'diras'},
+  {k:"PRENDRE · FUTUR DE L'INDICATIF", q:"Tu ___ des photos ?",                                  a:'prendras'},
+
+  /* ─── Futur — verbes -OIR (p. 9) ─── */
+  {k:"VOIR · FUTUR DE L'INDICATIF",    q:"Tu ___ les résultats demain.",                         a:'verras'},
+  {k:"VALOIR · FUTUR DE L'INDICATIF",  q:"Cela ___ la peine.",                                   a:'vaudra'},
+  {k:"RECEVOIR · FUTUR DE L'INDICATIF",q:"Vous les ___ bientôt.",                                a:'recevrez'},
+  {k:"PLEUVOIR · FUTUR DE L'INDICATIF",q:"Il ___ demain selon la météo.",                        a:'pleuvra'},
+];
+
+/* ──────────────────────────────────────
+   Lessons: one per tense, in order of appearance
+────────────────────────────────────── */
+const tenseOf = ex => (ex.k.split(' · ')[1] || 'AUTRES');
+const prettyTense = t => {
+  const s = t.replace(/ DE L'INDICATIF$/, '').toLowerCase();
+  return s.charAt(0).toUpperCase() + s.slice(1);
+};
+
+const LESSONS = [];
+EX.forEach(ex => {
+  const key = tenseOf(ex);
+  let l = LESSONS.find(l => l.key === key);
+  if (!l) { l = { key, title: prettyTense(key), kicker: key, items: [] }; LESSONS.push(l); }
+  l.items.push(ex);
+});
+LESSONS.push({ key: 'ALL', title: 'Tout réviser', kicker: 'TOUS LES TEMPS', items: EX, all: true });
+
+/* ──────────────────────────────────────
+   State
+────────────────────────────────────── */
+let progress = {};          // { [lessonKey]: { idx, score, best } }
+let lesson = null, list = [];
+let idx = 0, score = 0, answered = false, picked = null;
+
+function saveLesson(patch) {
+  progress[lesson.key] = Object.assign({}, progress[lesson.key], patch);
+  store.save(progress);
+}
+
+/* ──────────────────────────────────────
+   Home
+────────────────────────────────────── */
+function goHome() {
+  lesson = null;
+  $('navBar').hidden = true;
+  if (can('6.1')) tg.BackButton.hide();
+
+  const user = IN_TG && tg.initDataUnsafe && tg.initDataUnsafe.user;
+  const hello = user && user.first_name ? `Bonjour, ${esc(user.first_name)} !` : 'Bonjour !';
+
+  let html = `
+    <div class="home-head">
+      <div class="kicker"><span class="kicker-tense">Charpente</span><span class="kicker-dot"> · </span><span class="kicker-verb">Conjugaison</span></div>
+      <h1>${hello}</h1>
+      <p>Choisissez un temps de l'indicatif à réviser.</p>
+    </div>
+    <div class="lessons">`;
+
+  LESSONS.forEach((l, i) => {
+    const p = progress[l.key] || {};
+    const n = l.items.length;
+    const inProgress = p.idx > 0 && p.idx < n;
+    let meta = `${n} exercices`;
+    if (inProgress) meta += ` · <span class="resume">reprendre ${p.idx + 1}/${n}</span>`;
+    else if (p.best != null) meta += ` · <span class="best">meilleur score ${p.best} %</span>`;
+    const barPct = inProgress ? (p.idx / n) * 100 : (p.best != null ? 100 : 0);
+    html += `
+      <button class="lesson${l.all ? ' all' : ''}" onclick="openLesson(${i})">
+        <div class="lesson-body">
+          <div class="lesson-title">${esc(l.title)}</div>
+          <div class="lesson-meta">${meta}</div>
+          ${barPct ? `<div class="lesson-bar"><div class="${inProgress ? '' : 'done'}" style="width:${barPct}%"></div></div>` : ''}
+        </div>
+        <svg class="lesson-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>`;
+  });
+  html += `</div>`;
+  $('main').innerHTML = html;
+  window.scrollTo(0, 0);
+}
+
+function openLesson(i) {
+  haptic.tap();
+  lesson = LESSONS[i];
+  list = lesson.items;
+  const p = progress[lesson.key] || {};
+  if (p.idx > 0 && p.idx < list.length) { idx = p.idx; score = p.score || 0; }
+  else { idx = 0; score = 0; }
+  $('navBar').hidden = false;
+  if (can('6.1')) tg.BackButton.show();
+  render();
+}
+
+/* ──────────────────────────────────────
+   Progress bar
+────────────────────────────────────── */
+function updateBar() {
+  const pct = (idx / list.length) * 100;
+  const fill = $('progFill');
+  fill.style.width = pct + '%';
+  fill.classList.toggle('green', idx >= list.length);
+  $('progCount').textContent = Math.min(idx + 1, list.length) + '/' + list.length;
+}
+
+/* ──────────────────────────────────────
+   Exercise
+────────────────────────────────────── */
+function render() {
+  if (idx >= list.length) { showDone(); return; }
+  updateBar();
+  answered = false; picked = null;
+
+  const ex = list[idx];
+  const isFill = !ex.type || ex.type === 'fill';
+  const [before = '', after = ''] = ex.q.split('___');
+
+  const kParts = ex.k.split(' · ');
+  const kHtml = kParts.length === 2
+    ? `<span class="kicker-verb">${esc(kParts[0])}</span><span class="kicker-dot"> · </span><span class="kicker-tense">${esc(kParts[1])}</span>`
+    : esc(ex.k);
+
+  let html = `<div class="kicker">${kHtml}</div>`;
+  html += `<div class="question-sentence">${esc(before)}<span class="blank-span" id="blankEl">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>${esc(after)}</div>`;
+
+  if (isFill) {
+    html += `
+      <form class="input-wrap" id="inWrap" onsubmit="event.preventDefault(); answered ? next() : checkFill();">
+        <input id="inp" type="text" placeholder="votre réponse…"
+               autocomplete="off" autocorrect="off" autocapitalize="off"
+               spellcheck="false" enterkeyhint="go"/>
+        <svg class="kbd-icon" width="17" height="17" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="2" y="6" width="20" height="12" rx="2"/>
+          <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/>
+        </svg>
+      </form>`;
+  } else {
+    html += `<div class="choices">`;
+    ex.c.forEach((ch, i) => {
+      html += `<button class="choice-btn" data-idx="${i}" onclick="pick(this)">${esc(ch)}</button>`;
+    });
+    html += `</div>`;
+  }
+
+  html += `<div class="spacer"></div>`;
+  html += `<button class="cta-btn" id="btn" ${isFill ? '' : 'disabled'}>Vérifier →</button>`;
+
+  $('main').innerHTML = html;
+  $('btn').onclick = isFill ? checkFill : checkChoice;
+  if (isFill) $('inp').focus();
+}
+
+function checkFill() {
+  if (answered) return;
+  const inp = $('inp');
+  const val = inp.value.trim();
+  if (!val) return;
+
+  answered = true;
+  inp.disabled = true;
+
+  const ex = list[idx];
+  const ok = norm(val) === norm(ex.a);
+  if (ok) score++;
+
+  const blank = $('blankEl');
+  blank.textContent = val;
+  blank.classList.add(ok ? 'correct' : 'wrong');
+  if (!ok) showCorrectAfter(ex.a);
+
+  afterAnswer(ok);
+}
+
+function pick(el) {
+  if (answered) return;
+  haptic.tap();
+  document.querySelectorAll('.choice-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  picked = parseInt(el.dataset.idx, 10);
+  $('btn').disabled = false;
+}
+
+function checkChoice() {
+  if (picked === null || answered) return;
+  answered = true;
+  const ex = list[idx];
+  const chosen = ex.c[picked];
+  const ok = chosen === ex.a;
+  if (ok) score++;
+
+  document.querySelectorAll('.choice-btn').forEach(b => {
+    b.disabled = true;
+    if (b.textContent.trim() === ex.a) b.classList.add('rev-ok');
+    else if (b.classList.contains('selected')) b.classList.add('rev-bad');
+  });
+
+  const blank = $('blankEl');
+  blank.textContent = chosen;
+  blank.classList.add(ok ? 'correct' : 'wrong');
+  if (!ok) showCorrectAfter(ex.a);
+
+  afterAnswer(ok);
+}
+
+function showCorrectAfter(correct) {
+  const hint = document.createElement('span');
+  hint.className = 'correct-after';
+  hint.textContent = ' (' + correct + ')';
+  document.querySelector('.question-sentence').appendChild(hint);
+}
+
+function afterAnswer(ok) {
+  ok ? haptic.ok() : haptic.bad();
+  saveLesson({ idx: idx + 1, score });
+  const btn = $('btn');
+  btn.textContent = 'Continuer →';
+  btn.onclick = next;
+  btn.disabled = false;
+  if (ok) btn.classList.add('green');
+}
+
+function next() { idx++; render(); }
+
+/* ──────────────────────────────────────
+   Completion
+────────────────────────────────────── */
+function showDone() {
+  const fill = $('progFill');
+  fill.style.width = '100%';
+  fill.classList.add('green');
+  $('progCount').textContent = list.length + '/' + list.length;
+
+  const pct = Math.round((score / list.length) * 100);
+  const msg = pct === 100 ? 'Parfait !' : pct >= 80 ? 'Excellent travail !' : pct >= 60 ? 'Bon travail !' : 'Continuez à pratiquer !';
+  const prevBest = (progress[lesson.key] || {}).best;
+  saveLesson({ idx: 0, score: 0, best: Math.max(prevBest || 0, pct) });
+  haptic.ok();
+
+  $('main').innerHTML = `
+    <div class="completion">
+      <div class="completion-ring">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none"
+             stroke="#1D9E75" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+          <polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+      </div>
+      <div class="kicker"><span class="kicker-tense">${esc(lesson.kicker)}</span><span class="kicker-dot"> · </span><span class="kicker-verb">TERMINÉ</span></div>
+      <h2>${msg}</h2>
+      <p class="sub">
+        Score : <span class="hi">${score} / ${list.length}</span><br>
+        Réussite : <span class="hi">${pct} %</span>
+      </p>
+      <div class="btns">
+        <button class="cta-btn" onclick="restart()">Recommencer →</button>
+        <button class="cta-btn ghost" onclick="goHome()">Choisir un autre temps</button>
+      </div>
+    </div>`;
+}
+
+function restart() { idx = 0; score = 0; render(); }
+
+/* Enter → next once the answer is shown (desktop keyboards) */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && answered && e.target.tagName !== 'INPUT') { e.preventDefault(); next(); }
+});
+
+/* ── Start ── */
+store.load().then(v => {
+  try { progress = JSON.parse(v) || {}; } catch { progress = {}; }
+  goHome();
+});
+</script>
+</body>
+</html>
