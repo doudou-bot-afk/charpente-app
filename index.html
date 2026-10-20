@@ -289,6 +289,29 @@ const haptic = {
   tap()  { if (can('6.1')) tg.HapticFeedback.selectionChanged(); },
 };
 
+/* Usage stats via GoatCounter (doudouroryos.goatcounter.com).
+   Only page/event names are sent — no Telegram user data. */
+window.goatcounter = { no_onload: true, allow_frame: true };
+const stats = {
+  hit() {
+    if (!window.goatcounter.count) return;
+    goatcounter.count(IN_TG
+      ? { path: '/telegram', title: 'Ouvert dans Telegram' }
+      : { path: '/navigateur', title: 'Ouvert dans un navigateur' });
+  },
+  event(name) {
+    if (window.goatcounter.count) goatcounter.count({ path: name, event: true });
+  },
+};
+(() => {
+  const s = document.createElement('script');
+  s.async = true;
+  s.src = 'https://gc.zgo.at/count.js';
+  s.dataset.goatcounter = 'https://doudouroryos.goatcounter.com/count';
+  s.onload = stats.hit;
+  document.head.appendChild(s);
+})();
+
 /* Progress is kept in Telegram CloudStorage (synced across the user's
    devices), falling back to localStorage in a normal browser. */
 const STORE_KEY = 'progress_v1';
@@ -705,6 +728,7 @@ function openLesson(i) {
   const p = progress[lesson.key] || {};
   if (p.idx > 0 && p.idx < list.length) { idx = p.idx; score = p.score || 0; }
   else { idx = 0; score = 0; }
+  stats.event('Leçon ouverte : ' + lesson.title);
   $('navBar').hidden = false;
   if (can('6.1')) tg.BackButton.show();
   render();
@@ -854,6 +878,8 @@ function showDone() {
   const prevBest = (progress[lesson.key] || {}).best;
   saveLesson({ idx: 0, score: 0, best: Math.max(prevBest || 0, pct) });
   haptic.ok();
+  const band = pct === 100 ? '100 %' : pct >= 80 ? '80–99 %' : pct >= 60 ? '60–79 %' : 'moins de 60 %';
+  stats.event('Leçon terminée : ' + lesson.title + ' (' + band + ')');
 
   $('main').innerHTML = `
     <div class="completion">
